@@ -1,4 +1,4 @@
-from libnote.item import Item
+from .item import Item
 from typing import Optional, Tuple
 
 
@@ -33,9 +33,15 @@ class Reader:
                 line = self.__reader.readline()
                 while len(line) > 4 and line[0] == line[1] == line[2] == line[
                         3] == " ":
-                    item.values.append(line[4:-1])
+                    if is_vocabulary:
+                        item.values.append(line[4:-1])
+                    else:
+                        item.key += "\n    " + line[4:-1]
                     line = self.__reader.readline()
                 self.__last_line = line
                 break
+
+        if item.key == "" and len(item.values) == 0:
+            return None
 
         return is_vocabulary, item

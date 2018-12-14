@@ -1,4 +1,4 @@
-from libnote.item import Item
+from .item import Item
 from typing import List, Optional, Set
 
 

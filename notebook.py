@@ -5,14 +5,13 @@ from pynput import keyboard
 from sys import stdout, exit
 from typing import Tuple
 
-cursor_filename = ".cache/cursor"
 data_filename = ".data/data"
+location_filename = ".cache/location"
 saved_filename = ".cache/saved"
 
 clear_screen_cmd = "cls"
 quit_cmd = "'q'"
 save_cmd = "'s'"
-show_more_cmd = "Key.space"
 show_next_cmd1 = "'n'"
 show_next_cmd2 = "Key.down"
 show_next_cmd3 = "Key.right"
@@ -21,6 +20,7 @@ show_previous_cmd1 = "'p'"
 show_previous_cmd2 = "Key.left"
 show_previous_cmd3 = "Key.up"
 show_previous_cmd4 = "Key.page_up"
+toggle_more_cmd = "Key.space"
 toogle_note_cmd = "'x'"
 toggle_saved_cmd = "'t'"
 
@@ -40,6 +40,8 @@ saved_sentences: Note = None
 previous_note: Note = None
 previous_saved: Note = None
 
+last_notebook_viewed = ""
+
 
 def clear():
     system(clear_screen_cmd)
@@ -52,8 +54,14 @@ def clprint(*objects, sep=" ", end="\n", file=stdout, flush=False):
 
 def refresh():
     string = ""
-    if notebook is saved_vocabulary or notebook is saved_sentences:
-        string += "Saved Notes:\n"
+    if notebook is vocabulary:
+        string += "Vocabulary:\n"
+    elif notebook is sentences:
+        string += "Sentences:\n"
+    elif notebook is saved_vocabulary:
+        string += "Saved Vocabulary:\n"
+    else:
+        string += "Saved Sentences:\n"
     string += "# " + str(notebook.cursor + 1) + "\n"
     clprint(string + notebook.get_the_refreshed(), end="")
 
@@ -130,6 +138,8 @@ def toggle_saved():
 
 
 def init_notebook() -> Tuple[Note, Note, Note, Note]:
+    global last_notebook_viewed
+
     vocabulary = Note("Vocabulary")
     vocabulary.is_show_more = False
     sentences = Note("Sentences")
@@ -156,12 +166,13 @@ def init_notebook() -> Tuple[Note, Note, Note, Note]:
                     saved_sentences.add(flag_item[1])
                 flag_item = reader.next_item()
 
-    if path.exists(cursor_filename) and path.getsize(cursor_filename):
-        with open(cursor_filename, "r", encoding="utf-8") as cursor_file:
-            vocabulary.cursor = int(cursor_file.readline())
-            sentences.cursor = int(cursor_file.readline())
-            saved_vocabulary.cursor = int(cursor_file.readline())
-            saved_sentences.cursor = int(cursor_file.readline())
+    if path.exists(location_filename) and path.getsize(location_filename):
+        with open(location_filename, "r", encoding="utf-8") as location_file:
+            vocabulary.cursor = int(location_file.readline())
+            sentences.cursor = int(location_file.readline())
+            saved_vocabulary.cursor = int(location_file.readline())
+            saved_sentences.cursor = int(location_file.readline())
+            last_notebook_viewed = location_file.readline().strip()
 
     return vocabulary, sentences, saved_vocabulary, saved_sentences
 
@@ -192,8 +203,8 @@ def on_press_key(key):
         exit()
     elif str(key) == f"{save_cmd}":
         save()
-    elif str(key) == f"{show_more_cmd}":
-        if notebook.name == "Vocabulary":
+    elif str(key) == f"{toggle_more_cmd}":
+        if notebook is vocabulary or notebook is saved_vocabulary:
             if notebook.is_show_more:
                 show_simple()
             else:
@@ -221,6 +232,7 @@ def on_release_key(key):
 
 
 def main():
+    global last_notebook_viewed
     global notebook
     global vocabulary
     global sentences
@@ -240,15 +252,24 @@ def main():
                 on_press=on_press_key, on_release=on_release_key) as listener:
             listener.join()
 
-    notebook = vocabulary
+    if last_notebook_viewed == "Vocabulary":
+        notebook = vocabulary
+    elif last_notebook_viewed == "Sentences":
+        notebook = sentences
+    elif last_notebook_viewed == "Saved Vocabulary":
+        notebook = saved_vocabulary
+    else:
+        notebook = saved_sentences
 
     while True:
         if is_exit:
-            with open(cursor_filename, "w", encoding="utf-8") as cursor_file:
-                cursor_file.write(str(vocabulary.cursor) + "\n")
-                cursor_file.write(str(sentences.cursor) + "\n")
-                cursor_file.write(str(saved_vocabulary.cursor) + "\n")
-                cursor_file.write(str(saved_sentences.cursor) + "\n")
+            with open(
+                    location_filename, "w", encoding="utf-8") as location_file:
+                location_file.write(str(vocabulary.cursor) + "\n")
+                location_file.write(str(sentences.cursor) + "\n")
+                location_file.write(str(saved_vocabulary.cursor) + "\n")
+                location_file.write(str(saved_sentences.cursor) + "\n")
+                location_file.write(notebook.name + "\n")
             exit()
 
         run()
