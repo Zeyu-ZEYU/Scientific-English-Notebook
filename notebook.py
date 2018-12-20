@@ -10,6 +10,8 @@ location_filename = ".cache/location"
 saved_filename = ".cache/saved"
 
 clear_screen_cmd = "cls"
+go_to_first_cmd = "Key.home"
+go_to_last_cmd = "Key.end"
 quit_cmd = "'q'"
 save_cmd = "'s'"
 show_next_cmd1 = "'n'"
@@ -76,9 +78,25 @@ def show_simple():
     refresh()
 
 
+def go_to_first():
+    notebook.cursor = 0
+    if notebook is vocabulary:
+        show_simple()
+    else:
+        refresh()
+
+
+def go_to_last():
+    notebook.cursor = notebook.length - 1
+    if notebook is vocabulary:
+        show_simple()
+    else:
+        refresh()
+
+
 def show_next():
     notebook.cursor_forward()
-    if notebook.name == "Vocabulary":
+    if notebook is vocabulary:
         show_simple()
     else:
         refresh()
@@ -86,7 +104,7 @@ def show_next():
 
 def show_previous():
     notebook.cursor_backward()
-    if notebook.name == "Vocabulary":
+    if notebook is vocabulary:
         show_simple()
     else:
         refresh()
@@ -197,7 +215,11 @@ def on_press_key(key):
     if is_pausing:
         return
 
-    if str(key) == f"{quit_cmd}":
+    if str(key) == f"{go_to_first_cmd}":
+        go_to_first()
+    elif str(key) == f"{go_to_last_cmd}":
+        go_to_last()
+    elif str(key) == f"{quit_cmd}":
         is_exit = True
         clear()
         exit()
@@ -232,7 +254,6 @@ def on_release_key(key):
 
 
 def main():
-    global last_notebook_viewed
     global notebook
     global vocabulary
     global sentences

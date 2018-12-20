@@ -34,6 +34,10 @@ class Note:
             self.__cursor = cursor_value
 
     @property
+    def length(self) -> int:
+        return len(self.__items)
+
+    @property
     def name(self) -> str:
         return self.__name
 
