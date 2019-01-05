@@ -1,48 +1,34 @@
-from libnote.note import Note
-from libnote.reader import Reader
-from os import path, system
+from _libnote import NotePage
+from os import mkdir, path, system
 from pynput import keyboard
 from sys import stdout, exit
-from typing import Tuple
+from typing import List
 
-data_filename = ".data/data"
-location_filename = ".cache/location"
-saved_filename = ".cache/saved"
+save_point_filename = ".critical_data/save_point"
+sentences_file_path = "notepages/sentences"
+vocabulary_file_path = "notepages/vocabulary"
 
 clear_screen_cmd = "cls"
-go_to_first_cmd = "Key.home"
-go_to_last_cmd = "Key.end"
-quit_cmd = "'q'"
-save_cmd = "'s'"
-show_next_cmd1 = "'n'"
-show_next_cmd2 = "Key.down"
-show_next_cmd3 = "Key.right"
-show_next_cmd4 = "Key.page_down"
-show_previous_cmd1 = "'p'"
-show_previous_cmd2 = "Key.left"
-show_previous_cmd3 = "Key.up"
-show_previous_cmd4 = "Key.page_up"
-toggle_more_cmd = "Key.space"
-toogle_note_cmd = "'x'"
-toggle_saved_cmd = "'t'"
 
-pause_ctrlcmd = "'p'"
+go_to_first_cmd = ["Key.home"]
+go_to_last_cmd = ["Key.end"]
+quit_cmd = ["'q'"]
+show_previous_cmd = ["Key.left", "Key.up", "Key.page_up"]
+show_next_cmd = ["Key.right", "Key.down", "Key.page_down"]
+toggle_more_cmd = ["Key.space"]
+toggle_note_page_cmd = ["'x'"]
+
+go_to_first_sub_page_ctrlcmd = ["Key.home"]
+go_to_last_sub_page_ctrlcmd = ["Key.end"]
+previous_sub_page_ctrlcmd = ["Key.left", "Key.up", "Key.page_up"]
+next_sub_page_ctrlcmd = ["Key.right", "Key.down", "Key.page_down"]
+pause_ctrlcmd = ["'p'"]
+
+note_pages: List[NotePage] = []
+note_page_index = 0
 
 is_ctrl_pressed = False
-is_exit = False
 is_pausing = False
-
-notebook: Note = None
-
-vocabulary: Note = None
-sentences: Note = None
-saved_vocabulary: Note = None
-saved_sentences: Note = None
-
-previous_note: Note = None
-previous_saved: Note = None
-
-last_notebook_viewed = ""
 
 
 def clear():
@@ -56,194 +42,154 @@ def clprint(*objects, sep=" ", end="\n", file=stdout, flush=False):
 
 def refresh():
     string = ""
-    if notebook is vocabulary:
-        string += "Vocabulary:\n"
-    elif notebook is sentences:
-        string += "Sentences:\n"
-    elif notebook is saved_vocabulary:
-        string += "Saved Vocabulary:\n"
-    else:
-        string += "Saved Sentences:\n"
-    string += "# " + str(notebook.cursor + 1) + "\n"
-    clprint(string + notebook.get_the_refreshed(), end="")
+
+    string += f"{note_pages[note_page_index].name}\n\n"
+    string += f"=== Sub-page # {note_pages[note_page_index].index + 1} ({note_pages[note_page_index].sub_page_num - note_pages[note_page_index].index - 1} Left)\n"
+    string += f"=== {note_pages[note_page_index].sub_page_name}\n\n"
+    string += f"# {note_pages[note_page_index].cursor + 1} ({note_pages[note_page_index].sub_page_len - note_pages[note_page_index].cursor - 1} Left)\n"
+    clprint(string + note_pages[note_page_index].item_str(), end="")
+
+
+# Operating functions on sub-pages
 
 
 def show_more():
-    notebook.is_show_more = True
+    note_pages[note_page_index].show_more = True
     refresh()
 
 
 def show_simple():
-    notebook.is_show_more = False
+    note_pages[note_page_index].show_more = False
     refresh()
 
 
-def go_to_first():
-    notebook.cursor = 0
-    if notebook is vocabulary:
-        show_simple()
-    else:
-        refresh()
-
-
-def go_to_last():
-    notebook.cursor = notebook.length - 1
-    if notebook is vocabulary:
-        show_simple()
-    else:
-        refresh()
-
-
-def show_next():
-    notebook.cursor_forward()
-    if notebook is vocabulary:
+def refresh_for_toggle():
+    if note_pages[note_page_index].name == "Vocabulary":
         show_simple()
     else:
         refresh()
 
 
 def show_previous():
-    notebook.cursor_backward()
-    if notebook is vocabulary:
-        show_simple()
-    else:
-        refresh()
+    note_pages[note_page_index].cursor -= 1
+
+    refresh_for_toggle()
 
 
-def save():
-    def write():
-        with open(saved_filename, "a", encoding="utf-8") as saved_file:
-            saved_file.write(str(notebook.get_current_item()))
+def show_next():
+    note_pages[note_page_index].cursor += 1
 
-    if notebook is vocabulary and not saved_vocabulary.has_item_key(
-            notebook.get_current_item().key):
-        saved_vocabulary.add(notebook.get_current_item())
-        write()
-    elif notebook is sentences and not saved_sentences.has_item_key(
-            notebook.get_current_item().key):
-        saved_sentences.add(notebook.get_current_item())
-        write()
+    refresh_for_toggle()
 
 
-def toggle_note():
-    global notebook
+def go_to_first():
+    note_pages[note_page_index].cursor = 0
 
-    if notebook is vocabulary:
-        notebook = sentences
-    elif notebook is sentences:
-        notebook = vocabulary
-    elif notebook is saved_vocabulary:
-        notebook = saved_sentences
-    else:
-        notebook = saved_vocabulary
-
-    exit()
+    refresh_for_toggle()
 
 
-def toggle_saved():
-    global notebook
-    global previous_note
-    global previous_saved
+def go_to_last():
+    note_pages[
+        note_page_index].cursor = note_pages[note_page_index].sub_page_len - 1
 
-    if notebook is vocabulary or notebook is sentences:
-        previous_note = notebook
-        notebook = previous_saved
-    else:
-        previous_saved = notebook
-        notebook = previous_note
-
-    exit()
+    refresh_for_toggle()
 
 
-def init_notebook() -> Tuple[Note, Note, Note, Note]:
-    global last_notebook_viewed
+def toggle_more():
+    if note_pages[note_page_index].name == "Vocabulary":
+        if note_pages[note_page_index].show_more:
+            show_simple()
+        else:
+            show_more()
 
-    vocabulary = Note("Vocabulary")
-    vocabulary.is_show_more = False
-    sentences = Note("Sentences")
-    saved_vocabulary = Note("Saved Vocabulary")
-    saved_vocabulary.is_show_more = False
-    saved_sentences = Note("Saved Sentences")
 
-    with Reader(data_filename) as reader:
-        flag_item = reader.next_item()
-        while flag_item is not None:
-            if flag_item[0]:
-                vocabulary.add(flag_item[1])
-            else:
-                sentences.add(flag_item[1])
-            flag_item = reader.next_item()
+# Operating functions on note pages
 
-    if path.exists(saved_filename) and path.getsize(saved_filename):
-        with Reader(saved_filename) as reader:
-            flag_item = reader.next_item()
-            while flag_item is not None:
-                if flag_item[0]:
-                    saved_vocabulary.add(flag_item[1])
-                else:
-                    saved_sentences.add(flag_item[1])
-                flag_item = reader.next_item()
 
-    if path.exists(location_filename) and path.getsize(location_filename):
-        with open(location_filename, "r", encoding="utf-8") as location_file:
-            vocabulary.cursor = int(location_file.readline())
-            sentences.cursor = int(location_file.readline())
-            saved_vocabulary.cursor = int(location_file.readline())
-            saved_sentences.cursor = int(location_file.readline())
-            last_notebook_viewed = location_file.readline().strip()
+def previous_sub_page():
+    note_pages[note_page_index].index -= 1
 
-    return vocabulary, sentences, saved_vocabulary, saved_sentences
+    refresh_for_toggle()
+
+
+def next_sub_page():
+    note_pages[note_page_index].index += 1
+
+    refresh_for_toggle()
+
+
+def go_to_first_sub_page():
+    note_pages[note_page_index].index = 0
+
+    refresh_for_toggle()
+
+
+def go_to_last_sub_page():
+    note_pages[
+        note_page_index].index = note_pages[note_page_index].sub_page_num - 1
+
+    refresh_for_toggle()
+
+
+# Operating functions on note page list
+
+
+def toggle_note_page():
+    global note_page_index
+
+    note_page_index = (note_page_index + 1) % len(note_pages)
+
+    refresh_for_toggle()
 
 
 def on_press_key(key):
     global is_ctrl_pressed
-    global is_exit
     global is_pausing
 
     if key == keyboard.Key.ctrl_l:
         is_ctrl_pressed = True
+
         return
+
     if is_ctrl_pressed:
-        if str(key) == f"{pause_ctrlcmd}":
+        if str(key) in pause_ctrlcmd:
             if is_pausing:
                 is_pausing = False
                 refresh()
             else:
                 is_pausing = True
                 clprint("Pausing...\n", end="")
-        return
+
     if is_pausing:
         return
 
-    if str(key) == f"{go_to_first_cmd}":
+    if is_ctrl_pressed:
+        if str(key) in go_to_first_sub_page_ctrlcmd:
+            go_to_first_sub_page()
+        elif str(key) in go_to_last_sub_page_ctrlcmd:
+            go_to_last_sub_page()
+        elif str(key) in previous_sub_page_ctrlcmd:
+            previous_sub_page()
+        elif str(key) in next_sub_page_ctrlcmd:
+            next_sub_page()
+
+        return
+
+    if str(key) in go_to_first_cmd:
         go_to_first()
-    elif str(key) == f"{go_to_last_cmd}":
+    elif str(key) in go_to_last_cmd:
         go_to_last()
-    elif str(key) == f"{quit_cmd}":
-        is_exit = True
+    elif str(key) in quit_cmd:
         clear()
         exit()
-    elif str(key) == f"{save_cmd}":
-        save()
-    elif str(key) == f"{toggle_more_cmd}":
-        if notebook is vocabulary or notebook is saved_vocabulary:
-            if notebook.is_show_more:
-                show_simple()
-            else:
-                show_more()
-    elif str(key) == f"{show_next_cmd1}" or str(
-            key) == f"{show_next_cmd2}" or str(
-                key) == f"{show_next_cmd3}" or str(key) == f"{show_next_cmd4}":
-        show_next()
-    elif str(key) == f"{show_previous_cmd1}" or str(
-            key) == f"{show_previous_cmd2}" or str(
-                key) == f"{show_previous_cmd3}" or str(
-                    key) == f"{show_previous_cmd4}":
+    elif str(key) in show_previous_cmd:
         show_previous()
-    elif str(key) == f"{toogle_note_cmd}":
-        toggle_note()
-    elif str(key) == f"{toggle_saved_cmd}":
-        toggle_saved()
+    elif str(key) in show_next_cmd:
+        show_next()
+    elif str(key) in toggle_more_cmd:
+        toggle_more()
+    elif str(key) in toggle_note_page_cmd:
+        toggle_note_page()
 
 
 def on_release_key(key):
@@ -254,46 +200,42 @@ def on_release_key(key):
 
 
 def main():
-    global notebook
-    global vocabulary
-    global sentences
-    global saved_vocabulary
-    global saved_sentences
-    global previous_note
-    global previous_saved
+    global note_page_index
 
-    vocabulary, sentences, saved_vocabulary, saved_sentences = init_notebook()
+    note_pages.append(NotePage(vocabulary_file_path, "Vocabulary"))
+    note_pages.append(NotePage(sentences_file_path, "Sentences"))
 
-    previous_note = vocabulary
-    previous_saved = saved_vocabulary
+    if path.exists(save_point_filename) and path.getsize(save_point_filename):
+        with open(save_point_filename, "r", encoding="utf-8") as file:
+            note_page_index = int(file.readline())
+            line = file.readline()
 
-    def run():
-        refresh()
-        with keyboard.Listener(
-                on_press=on_press_key, on_release=on_release_key) as listener:
-            listener.join()
+            for index in range(len(note_pages)):
+                if line == "":
+                    break
 
-    if last_notebook_viewed == "Vocabulary":
-        notebook = vocabulary
-    elif last_notebook_viewed == "Sentences":
-        notebook = sentences
-    elif last_notebook_viewed == "Saved Vocabulary":
-        notebook = saved_vocabulary
-    else:
-        notebook = saved_sentences
+                note_pages[index].index = int(line)
+                note_pages[index].cursors = list(
+                    map(int,
+                        file.readline().split()))
+                line = file.readline()
 
-    while True:
-        if is_exit:
-            with open(
-                    location_filename, "w", encoding="utf-8") as location_file:
-                location_file.write(str(vocabulary.cursor) + "\n")
-                location_file.write(str(sentences.cursor) + "\n")
-                location_file.write(str(saved_vocabulary.cursor) + "\n")
-                location_file.write(str(saved_sentences.cursor) + "\n")
-                location_file.write(notebook.name + "\n")
-            exit()
+    with keyboard.Listener(
+            on_press=on_press_key, on_release=on_release_key) as listener:
+        refresh_for_toggle()
+        listener.join()
 
-        run()
+    if not path.exists(".critical_data"):
+        mkdir(".critical_data")
+
+    with open(save_point_filename, "w", encoding="utf-8") as file:
+        string = str(note_page_index) + "\n"
+
+        for index in range(len(note_pages)):
+            string += str(note_pages[index].index) + "\n"
+            string += " ".join(map(str, note_pages[index].cursors)) + "\n"
+
+        file.write(string)
 
 
 if __name__ == "__main__":
