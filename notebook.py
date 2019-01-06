@@ -67,9 +67,10 @@ def refresh():
     string += f"=== {note_pages[note_page_index].sub_page_name}\n\n"
 
     if note_pages[note_page_index].in_reviewer:
-        string += f"=== √ {note_pages[note_page_index].reviewed_num} Reviewed || × {note_pages[note_page_index].unreviewed_num} Unreviewed\n"
-        string += f"=== {'' if note_pages[note_page_index].reviewed_today(key_presented) else 'Not '}Reviewed Today "
-        string += f"(Already Reviewed {note_pages[note_page_index].review_times(key_presented)} Times)\n\n"
+        string += f"=== √ {note_pages[note_page_index].reviewed_num} Reviewed || × {note_pages[note_page_index].unreviewed_num} Unreviewed\n\n"
+        string += f"{'[√] ' if note_pages[note_page_index].reviewed_today(key_presented) else '[!] Not '}Reviewed Today "
+        string += f"(Already Reviewed {note_pages[note_page_index].review_times(key_presented)} Time(s))\n"
+        string += "------------------------------\n"
 
     string += f"# {note_pages[note_page_index].cursor + 1} ({remaining_item_num} Left)\n"
     clprint(string + note_pages[note_page_index].item_str(), end="")
