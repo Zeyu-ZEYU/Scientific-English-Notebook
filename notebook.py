@@ -3,8 +3,10 @@ from os import makedirs, system
 from os.path import dirname, exists, getsize, isfile
 from pynput import keyboard
 from sys import stdout, exit
+from traceback import print_exception
 from typing import List
 
+error_log_filename = ".critical_data/error_log.txt"
 save_point_filename = ".critical_data/save_point"
 sentences_data_path = ".critical_data/sentences_data"
 sentences_file_path = "notepages/sentences"
@@ -277,4 +279,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        dir_name = dirname(error_log_filename)
+
+        if not exists(dir_name):
+            makedirs(dir_name)
+
+        print_exception(file=error_log_filename)

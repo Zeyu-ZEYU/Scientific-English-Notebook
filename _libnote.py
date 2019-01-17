@@ -217,7 +217,7 @@ class NotePage:
         number = 0
 
         for key in self.__reviewer.keys():
-            days_interval = self.__tmstamp_to_days(time()) - int(
+            days_interval = self.__tmstamp_to_days(time() - 21600) - int(
                 self.__reviewer.item_by_key(key)[0][1][0])
 
             if days_interval == 0:
@@ -376,15 +376,15 @@ class NotePage:
         if key in self.__reviewer.keys():
             self.__reviewer.delete(key)
             self.__hidden_reviewer.add(
-                key, ("", [str(self.__tmstamp_to_days(time())), "0"]))
+                key, ("", [str(self.__tmstamp_to_days(time() - 21600)), "0"]))
         elif key in self.__hidden_reviewer.keys():
             content = self.__hidden_reviewer.item_by_key(key)[0][1]
 
-            content[0] = str(self.__tmstamp_to_days(time()))
+            content[0] = str(self.__tmstamp_to_days(time() - 21600))
             content[1] = "0"
         else:
             self.__hidden_reviewer.add(
-                key, ("", [str(self.__tmstamp_to_days(time())), "0"]))
+                key, ("", [str(self.__tmstamp_to_days(time() - 21600)), "0"]))
 
     def reviewed_today(self, key: Optional[str]) -> bool:
         if not key:
@@ -392,7 +392,7 @@ class NotePage:
 
         content = self.__reviewer.item_by_key(key)[0][1]
         days_recorded = int(content[0])
-        days_interval = self.__tmstamp_to_days(time()) - days_recorded
+        days_interval = self.__tmstamp_to_days(time() - 21600) - days_recorded
 
         if days_interval == 0:
             return True
@@ -539,7 +539,7 @@ class NotePage:
                     days_recorded = int(content[0])
                     review_times = int(content[1])
                     days_interval = self.__tmstamp_to_days(
-                        time()) - days_recorded
+                        time() - 21600) - days_recorded
 
                     if days_interval == 2**review_times or review_times != 0 and days_interval == 0:
                         self.__reviewer.add(key, (annotation, content))
@@ -558,10 +558,11 @@ class NotePage:
 
             days_recorded = int(content[0])
             review_times = int(content[1])
-            days_interval = self.__tmstamp_to_days(time()) - days_recorded
+            days_interval = self.__tmstamp_to_days(time() -
+                                                   21600) - days_recorded
 
             if days_interval > 0 and review_times != 8:
-                content[0] = str(self.__tmstamp_to_days(time()))
+                content[0] = str(self.__tmstamp_to_days(time() - 21600))
                 content[1] = str(review_times + 1)
 
     def __tmstamp_to_days(self, tmstamp: float) -> int:
@@ -578,4 +579,4 @@ class NotePage:
         if key not in self.__reviewer.keys(
         ) and key not in self.__hidden_reviewer.keys():
             self.__hidden_reviewer.add(
-                key, ("", [str(self.__tmstamp_to_days(time())), "0"]))
+                key, ("", [str(self.__tmstamp_to_days(time() - 21600)), "0"]))
